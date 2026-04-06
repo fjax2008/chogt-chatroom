@@ -153,7 +153,7 @@ let connectStartTime = Date.now();
 
 function getWsUrl() {
  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
- return proto + '//' + location.host;
+ return "wss://chogt-chatroom.onrender.com";
 }
 
 function showLoading(text, subtext) {
