@@ -1,13 +1,40 @@
 const { WebSocketServer } = require('ws');
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'sk-b234f5da203f4eb592ed460f2b03bdf9';
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+
+// MIME types for static files
+const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css',
+  '.js': 'application/javascript',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+};
 
 const server = http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('Chatroom WebSocket Server OK');
+  // Serve static files from /public
+  let filePath = req.url === '/' ? '/public/index.html' : '/public' + req.url;
+  filePath = path.join(__dirname, filePath);
+
+  const ext = path.extname(filePath);
+  const contentType = MIME[ext] || 'application/octet-stream';
+
+  fs.readFile(filePath, (err, data) => {
+    if (err) {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Not Found');
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': contentType });
+    res.end(data);
+  });
 });
 
 const wss = new WebSocketServer({ server });
@@ -47,6 +74,11 @@ function send(ws, msg) {
 }
 
 async function translate(text, sourceLang, targetLang) {
+  if (!DEEPSEEK_API_KEY) {
+    console.error('DEEPSEEK_API_KEY not set, skipping translation');
+    return text;
+  }
+
   const langMap = { zh: '简体中文', vi: '越南语' };
   const systemPrompt = '你是一个资深中越翻译专家，精通中越两国语言文化。翻译准确自然，只输出翻译结果。';
   const userPrompt = `请将以下${langMap[sourceLang]}翻译成${langMap[targetLang]}，只输出翻译结果：\n${text}`;
